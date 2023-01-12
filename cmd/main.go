@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Andresch29/go-web/cmd/handlers"
+	"github.com/Andresch29/go-web/cmd/middleware"
 	"github.com/Andresch29/go-web/internal/product"
 	"github.com/Andresch29/go-web/pkg/store"
 	"github.com/gin-gonic/gin"
@@ -32,12 +33,13 @@ func main() {
 	product := handlers.NewProduct(service)
 
 	productRouter := server.Group("/products")
-	productRouter.GET("", product.GetProducts)
-	productRouter.GET("/:id", product.GetProductById)
-	productRouter.GET("/search", product.GetProductByPrice)
-	productRouter.POST("", product.Create)
-	productRouter.PUT("/:id", product.Update)
-	productRouter.DELETE("/:id", product.Delete)
+	productRouter.GET("", product.GetProducts())
+	productRouter.GET("/:id", product.GetProductById())
+	productRouter.GET("/search", product.GetProductByPrice())
+	productRouter.Use(middleware.TokenAuthMiddleware())
+	productRouter.POST("", product.Create())
+	productRouter.PUT("/:id", product.Update())
+	productRouter.DELETE("/:id", product.Delete())
 
 
 	server.Run()

@@ -16,6 +16,15 @@ func NewErrorResponse(ctx *gin.Context, status int, err string) {
 	ctx.JSON(status, reponseJson)
 }
 
+func NewNotAuthResponse(ctx *gin.Context, status int, err string) {
+	reponseJson := errorResponse{
+		Status: status,
+		Message: err,
+	}
+
+	ctx.AbortWithStatusJSON(status, reponseJson)
+}
+
 type response struct {
 	Status int `json:"status"`
 	Data interface{} `json:"data"`

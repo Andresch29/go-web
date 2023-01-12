@@ -4498,5 +4498,23 @@
 "is_published": false,
 "expiration": "11/05/2021",
 "price": 515.93
+},
+{
+"id": 501,
+"name": "Crddddda",
+"quantity": 225,
+"code_value": "Ctgtrtgbgffdgdfgfgbnb",
+"is_published": true,
+"expiration": "23/12/2021",
+"price": 23
+},
+{
+"id": 502,
+"name": "Crddddda",
+"quantity": 225,
+"code_value": "C123",
+"is_published": true,
+"expiration": "23/12/2021",
+"price": 23
 }
 ]

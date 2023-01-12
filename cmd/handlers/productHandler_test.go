@@ -18,7 +18,7 @@ func createServerForProduct() *gin.Engine {
 	r := gin.Default()
 
 	pr := r.Group("/products")
-	pr.GET("", p.GetProducts)
+	pr.GET("", p.GetProducts())
 
 	return r
 }
