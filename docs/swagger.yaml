@@ -1,0 +1,35 @@
+definitions:
+  web.response:
+    properties:
+      data: {}
+      status:
+        type: integer
+    type: object
+info:
+  contact:
+    name: API Support
+    url: https://developers.mercadolibre.com.ar/support
+  description: This Api Handle MELI Products.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: MELI
+  title: MELI Bootcamp API
+  version: "1.0"
+paths:
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: get products
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/web.response'
+      summary: List products
+      tags:
+      - Products
+swagger: "2.0"

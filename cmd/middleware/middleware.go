@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"os"
 
@@ -18,6 +19,14 @@ func TokenAuthMiddleware() gin.HandlerFunc {
 			web.NewNotAuthResponse(ctx, http.StatusUnauthorized, "No estas autorizado")
 			return 
 		}
+
+		ctx.Next()
+	}
+}
+
+func ServerLog() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		log.Printf("[GIN] Method: %s - URL: localhost%s - LEN: %d", ctx.Request.Method,ctx.Request.RequestURI, ctx.Request.ContentLength)
 
 		ctx.Next()
 	}

@@ -2,15 +2,29 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/Andresch29/go-web/cmd/handlers"
 	"github.com/Andresch29/go-web/cmd/middleware"
+	"github.com/Andresch29/go-web/docs"
 	"github.com/Andresch29/go-web/internal/product"
 	"github.com/Andresch29/go-web/pkg/store"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title MELI Bootcamp API
+// @version 1.0
+// @description This Api Handle MELI Products.
+// @termsOfService MELI
+
+// @contact.name API Support
+// @contact.url https://developers.mercadolibre.com.ar/support
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 func main() {
 	err := godotenv.Load()
 
@@ -18,7 +32,12 @@ func main() {
 		log.Fatal("error al caergar el archivo .env")
 	} 
 
-	server := gin.Default()
+	server := gin.New()
+	server.Use(gin.Recovery())
+	server.Use(middleware.ServerLog())
+
+	docs.SwaggerInfo.Host = os.Getenv("HOST")
+	server.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	server.GET("/ping", func(ctx *gin.Context) {
 		ctx.String(200, "pong")
