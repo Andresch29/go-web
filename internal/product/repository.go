@@ -1,18 +1,17 @@
 package product
 
 import (
-	"encoding/json"
-	"errors"
-	"io/ioutil"
-
 	"github.com/Andresch29/go-web/internal/domain"
 )
 
 type Repository interface {
-	Create(product *domain.Product) (domain.Product, error)
-	GetAll() domain.Products
-	GetById(id int) (domain.Product, bool)
-	GetByPrice(price float64) domain.Products
+	Create(product domain.Product) (domain.Product, error)
+	GetAll() (domain.Products, error)
+	GetById(id int) (*domain.Product, error)
+	GetByPrice(price float64) (domain.Products, error)
+	Update(product domain.Product) (*domain.Product, error)
+	Delete(id int) (bool, error)
+	ExistsByCode(code string) (bool, error)
 }
 
 type Memory struct {
@@ -22,50 +21,37 @@ type Memory struct {
 
 func NewMemory() *Memory {
 	var products = domain.Products{}
-	content, _ := ioutil.ReadFile("/Users/andhenao/Documents/bootcamp/goweb/products.json")
-
-	json.Unmarshal(content, &products)
 	
-	currentID := len(products)
-
 	return &Memory{
-		currentID: currentID,
+		currentID: 0,
 		Products: products,
 	}
 }
 
-func (m *Memory) Create(product *domain.Product) (domain.Product, error) {
-	if product == nil {
-		return *product, errors.New("Product can't be nil")
-	}
-
+func (m *Memory) Create(product domain.Product) (domain.Product, error) {
 	m.currentID++
 	product.Id = m.currentID
-	m.Products = append(m.Products, *product)
+	m.Products = append(m.Products, product)
 
-	return *product, nil
+	return product, nil
 }
 
-func (m *Memory) GetAll() domain.Products {
-	return m.Products
+func (m *Memory) GetAll() (domain.Products, error) {
+	return m.Products, nil
 }
 
-func (m *Memory) GetById(id int) (domain.Product, bool) {
-	var product domain.Product
+func (m *Memory) GetById(id int) (*domain.Product, error) {
 
-	ok := false
 	for _, p := range m.Products {
 		if p.Id == id {
-			product = p
-			ok = true
-			break
+			return &p, nil
 		}
 	}
 
-	return product, ok
+	return nil, nil
 }
 
-func (m *Memory) GetByPrice(price float64) domain.Products {
+func (m *Memory) GetByPrice(price float64) (domain.Products, error) {
 	products := domain.Products{}
 
 	for _, p := range m.Products {
@@ -74,5 +60,47 @@ func (m *Memory) GetByPrice(price float64) domain.Products {
 		}
 	}
 
-	return products
+	return products, nil
+}
+
+func (m *Memory) Update(product domain.Product) (*domain.Product, error) {
+	var productNew *domain.Product
+	for i, p := range m.Products {
+		if p.Id == product.Id {
+			m.Products[i] = product
+			productNew = &product
+			return productNew, nil
+		}
+	}
+
+	return productNew, nil
+}
+
+func (m *Memory) Delete(id int) (bool, error) {
+	deleted := false
+	var index int
+	for i, p := range m.Products {
+		if p.Id == id {
+			index = i
+			deleted = true
+		}
+	}
+
+	if !deleted {
+		return deleted, nil
+	}
+	m.Products = append(m.Products[:index], m.Products[index+1:]...)
+	return deleted, nil
+}
+
+func (m *Memory) ExistsByCode(code string) (bool, error) {
+	exists := false
+	for _, p := range m.Products {
+		if p.CodeValue == code {
+			exists = true
+			return exists, nil
+		}
+	}
+
+	return exists, nil
 }

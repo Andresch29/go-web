@@ -1,14 +1,18 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/Andresch29/go-web/internal/domain"
 	"github.com/Andresch29/go-web/internal/product"
+	"github.com/Andresch29/go-web/pkg/web"
 	"github.com/gin-gonic/gin"
 )
+
 
 type productRequest struct {
 	Name 		string `json:"name" binding:"required"`
@@ -29,56 +33,87 @@ func NewProduct(service product.Service) *Product {
 }
 
 func (p *Product) GetProducts(ctx *gin.Context) {
-	products := p.service.GetAll()
-	
-	ctx.JSON(200, products)
+	products, err := p.service.GetAll()
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
+		return
+	}
+
+	web.NewResponse(ctx, http.StatusOK, products)
 }
 
 func (p *Product) GetProductById(ctx *gin.Context) {
 	idProduct, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.String(400, "El id debe ser un numero")
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "El id debe ser un entero")
 		return
 	}
 
-	product, ok := p.service.GetById(idProduct)
-
-	if !ok {
-		ctx.String(404, "No se encontro el producto con id: %d", idProduct)
+	product, err := p.service.GetById(idProduct)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "Error en el servidor")
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
 		return
 	}
 
-	ctx.JSON(200, product)
+	if product == nil {
+		ctx.String(http.StatusNotFound, "No se encontro el producto")
+		web.NewErrorResponse(ctx, http.StatusNotFound, fmt.Sprintf("No existe el producto con %d", idProduct))
+		return
+	}
+
+	web.NewResponse(ctx, http.StatusOK, product)
 }
 
 func (p *Product) GetProductByPrice(ctx *gin.Context) {
 	price, err := strconv.ParseFloat(ctx.Query("priceGt"), 64)
 	if err != nil {
-		ctx.String(400, "El precio debe ser un numero")
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "El precio debe ser un valor numerico")
 		return
 	}
 
-	products:= p.service.GetByPrice(price)
+	products, err := p.service.GetByPrice(price)
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
+		return
+	}
 
-	ctx.JSON(200, products)
-
+	web.NewResponse(ctx, http.StatusOK, products)
 }
 
 func (p *Product) Create(ctx *gin.Context) {
+	token := ctx.GetHeader("token")
+	if token != os.Getenv("TOKEN") {
+		web.NewErrorResponse(ctx, http.StatusUnauthorized, "No estas autorizado")
+		return
+	}
+
 	var productRequest productRequest
 
 	err := ctx.ShouldBindJSON(&productRequest)
 	if err != nil {
-		ctx.String(400, "Error en la peticion")
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "Error en la peticion")
 		return
 	}
 
 	if _, err := time.Parse("02/01/2006", productRequest.Expiration); err != nil {
-		ctx.String(400, "Fecha invalida")
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "Error en la peticion")
 		return
 	}
 
-	product := &domain.Product{
+	existsCode, err := p.service.ExistsByCode(productRequest.CodeValue)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "Error en el servidor")
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
+		return
+	}
+
+	if existsCode {
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "Error en la peticion")
+		return
+	}
+
+	product := domain.Product{
 		Name: productRequest.Name,
 		Quantity: productRequest.Quantity,
 		CodeValue: productRequest.CodeValue,
@@ -89,9 +124,90 @@ func (p *Product) Create(ctx *gin.Context) {
 
 	productDB, err := p.service.Create(product)
 	if err != nil {
-		ctx.String(500, "Error al crear producto")
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, productDB)
+	web.NewResponse(ctx, http.StatusCreated, productDB)
+}
+
+func (p *Product) Update(ctx *gin.Context) {
+	token := ctx.GetHeader("token")
+	if token != os.Getenv("TOKEN") {
+		web.NewErrorResponse(ctx, http.StatusUnauthorized, "No estas autorizado")
+		return
+	}
+
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "El id debe ser un numero")
+		return
+	}
+
+	var productRequest domain.Product
+	err = ctx.ShouldBindJSON(&productRequest)
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "Error en la peticion")
+		return
+	}
+
+	productNew := domain.Product{
+		Id: id,
+		Name: productRequest.Name,
+		Quantity: productRequest.Quantity,
+		CodeValue: productRequest.CodeValue,
+		IsPublished: productRequest.IsPublished,
+		Expiration: productRequest.Expiration,
+		Price: productRequest.Price,
+	}
+
+	productResponse, err := p.service.Update(productNew)
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
+		return
+	}
+
+	if productResponse == nil {
+		web.NewErrorResponse(ctx, http.StatusNotFound, fmt.Sprintf("No existe el producto con %d", id))
+		return
+	}
+
+	web.NewResponse(ctx, http.StatusOK, productResponse)
+}
+
+func (p *Product) Delete(ctx *gin.Context) {
+	token := ctx.GetHeader("token")
+	if token != os.Getenv("TOKEN") {
+		web.NewErrorResponse(ctx, http.StatusUnauthorized, "No estas autorizado")
+		return
+	}
+
+	idProduct, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusBadRequest, "El id debe ser un numero")
+		return
+	}
+
+	productDB, err := p.service.GetById(idProduct)
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
+		return
+	}
+	if productDB == nil {
+		web.NewErrorResponse(ctx, http.StatusNotFound, fmt.Sprintf("No existe el producto con %d", idProduct))
+		return
+	}
+
+	deleted, err := p.service.Delete(idProduct)
+	if err != nil {
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
+		return
+	}
+
+	if !deleted {
+		web.NewErrorResponse(ctx, http.StatusInternalServerError, "Error en el servidor")
+		return
+	}
+
+	web.NewResponse(ctx, http.StatusNoContent, "Producto eliminado")
 }
